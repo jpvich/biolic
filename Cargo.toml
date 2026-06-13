@@ -1,0 +1,97 @@
+[package]
+name = "biolic"
+version = "0.1.1"
+edition = "2021"
+rust-version = "1.85"
+authors = ["jpvich"]
+license = "MIT OR Apache-2.0"
+description = "biolic (Bioinformatics Integrated Operations Library for IO & Computation): a modular, streaming bioinformatics toolkit in Rust for long-read sequencing data"
+repository = "https://github.com/jpvich/biolic"
+homepage = "https://github.com/jpvich/biolic"
+documentation = "https://docs.rs/biolic"
+readme = "README.md"
+keywords = ["bioinformatics", "fastq", "bam", "long-reads", "genomics"]
+categories = ["command-line-utilities", "science"]
+# Keep internal planning docs out of the public crate.
+# (crates.io packages are public and permanent.)
+exclude = ["biolic_plan.md", "prd/", ".github/", "conda-recipe/"]
+
+[[bin]]
+name = "biolic"
+path = "src/main.rs"
+
+[lib]
+name = "biolic"
+path = "src/lib.rs"
+
+[features]
+# Default build is pure-Rust + fully static (gzip only), per decision D3.
+default = []
+# Opt-in bzip2/xz/zstd support. Pulls in C libraries (libbz2/liblzma), so it is
+# NOT part of the default download-and-run binary.
+extra-compression = ["dep:niffler"]
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Sequence parsing — noodles is the sole parser (D2).
+# fastq + fasta + unaligned BAM (M1). bam pulls in bgzf + sam (header/records).
+noodles = { version = "0.85", features = ["fastq", "fasta", "bam", "sam", "bgzf"] }
+
+# Compression — pure-Rust gzip for the default static build (D3).
+flate2 = "1.0"
+# bz2/xz/zstd auto-detection, only under the extra-compression feature (D3).
+niffler = { version = "2.6", optional = true }
+
+# Parallelism
+rayon = "1.10"
+
+# Random sampling
+rand = "0.8"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Progress bars
+indicatif = "0.17"
+
+# Interactive REPL (entered on no-subcommand TTY runs) and command-line tokenizing
+reedline = "0.39"
+shlex = "1.3"
+
+# Shell-completion script generation (`biolic completions <shell>`)
+clap_complete = "4.5"
+
+# NOTE: chrono, uuid, rusqlite, statrs, directories are deferred until the
+# `qc` and `logs` modules are implemented (Milestone 3), to keep the default
+# build lean and fast. Re-add them (feature-gated where possible) at that point.
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3.10"
+criterion = "0.5"
+
+[[bench]]
+name = "stats_bench"
+harness = false
+
+[[test]]
+name = "cli_tests"
+path = "tests/integration/cli_tests.rs"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.bench]
+opt-level = 3
+lto = "thin"

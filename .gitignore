@@ -1,0 +1,30 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local config
+.env
+.envrc
+
+# Test outputs
+/test-output/
+*.log
+
+# Profiling
+flamegraph.svg
+perf.data*
+
+# Documentation builds
+/book/
+
+# Note: Cargo.lock is intentionally NOT ignored — biolic ships a binary, so the
+# lockfile is committed for reproducible builds.

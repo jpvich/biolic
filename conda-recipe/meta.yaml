@@ -1,0 +1,54 @@
+{% set name = "biolic" %}
+{% set version = "0.1.1" %}
+
+# Draft Bioconda recipe for biolic.
+#
+# To submit: copy this directory to bioconda-recipes/recipes/biolic/ and open a
+# PR. Before submitting, set the sha256 below to the hash of the published
+# crate (it only exists after `cargo publish`, since cargo embeds the git commit
+# in the .crate):
+#
+#   curl -sL https://static.crates.io/crates/biolic/biolic-{{ version }}.crate | sha256sum
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://static.crates.io/crates/{{ name }}/{{ name }}-{{ version }}.crate
+  sha256: 0000000000000000000000000000000000000000000000000000000000000000  # TODO: fill post-publish
+
+build:
+  number: 0
+  # Default features only -> pure-Rust, statically buildable (no bz2/xz C deps).
+  script: cargo install --no-track --locked --root "${PREFIX}" --path .
+
+requirements:
+  build:
+    - {{ compiler('rust') }}
+
+test:
+  commands:
+    - biolic --version
+    - biolic stats --help
+    - biolic count --help
+
+about:
+  home: https://github.com/jpvich/biolic
+  license: MIT OR Apache-2.0
+  license_file:
+    - LICENSE-MIT
+    - LICENSE-APACHE
+  summary: "Bioinformatics Integrated Operations Library for IO & Computation"
+  description: |
+    biolic (Bioinformatics Integrated Operations Library for IO & Computation) is
+    a modular, streaming bioinformatics toolkit in Rust for long-read sequencing
+    data (PacBio HiFi, Oxford Nanopore), with native unaligned BAM support. It
+    unifies statistics, counting, filtering, conversion, sampling, and search
+    behind one consistent CLI with JSON / TSV / human-readable output, and a
+    streaming-first design that keeps memory constant regardless of file size.
+  dev_url: https://github.com/jpvich/biolic
+
+extra:
+  recipe-maintainers:
+    - jpvich
