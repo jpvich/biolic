@@ -3,6 +3,10 @@
 **Bioinformatics Integrated Operations Library for IO & Computation** — a modular, streaming bioinformatics toolkit in Rust for processing long-read sequencing data.
 
 [![CI](https://github.com/jpvich/biolic/actions/workflows/ci.yml/badge.svg)](https://github.com/jpvich/biolic/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/biolic.svg)](https://crates.io/crates/biolic)
+[![Downloads](https://img.shields.io/crates/d/biolic.svg)](https://crates.io/crates/biolic)
+[![Docs.rs](https://docs.rs/biolic/badge.svg)](https://docs.rs/biolic)
+[![Rust 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT/Apache-2.0](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE-MIT)
 
 ## What is biolic?
