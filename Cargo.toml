@@ -62,7 +62,7 @@ serde_json = "1.0"
 indicatif = "0.17"
 
 # Interactive REPL (entered on no-subcommand TTY runs) and command-line tokenizing
-reedline = "0.39"
+reedline = "0.48"
 shlex = "2.0"
 
 # Shell-completion script generation (`biolic completions <shell>`)

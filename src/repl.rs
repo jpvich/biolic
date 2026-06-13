@@ -118,6 +118,8 @@ pub fn run_repl(ctx: &RunContext) -> Result<()> {
             }
             Ok(Signal::CtrlC) => continue,
             Ok(Signal::CtrlD) => break,
+            // `Signal` is #[non_exhaustive]; ignore any future variants.
+            Ok(_) => continue,
             Err(e) => {
                 eprintln!("error: {e}");
                 break;
@@ -250,6 +252,8 @@ fn suggestion(
         extra: None,
         span,
         append_whitespace,
+        display_override: None,
+        match_indices: None,
     }
 }
 
