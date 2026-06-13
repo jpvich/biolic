@@ -14,8 +14,9 @@ jobs:
   lint:
     name: Lint (fmt + clippy)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -28,8 +29,11 @@ jobs:
   test:
     name: Test ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
+      # Fast, abundant runners only, so CI never stalls in a runner queue.
+      # macOS x86_64 (scarce Intel runners) is validated in release.yml on tags.
       matrix:
         include:
           - os: ubuntu-latest
@@ -39,12 +43,10 @@ jobs:
             musl: true
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-          - os: macos-13
-            target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -52,8 +54,7 @@ jobs:
       - name: Install musl tools
         if: matrix.musl
         run: sudo apt-get update && sudo apt-get install -y musl-tools
-      # Default features only: validates the pure-Rust static build (D3) on every
-      # target. The C-backed `extra-compression` feature is exercised in `lint`.
+      # Default features only: validates the pure-Rust static build on each target.
       - name: Build
         run: cargo build --verbose --target ${{ matrix.target }}
       - name: Test
@@ -62,8 +63,9 @@ jobs:
   msrv:
     name: MSRV (1.85)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@1.85
       - uses: Swatinem/rust-cache@v2
       - name: Build on MSRV
