@@ -27,6 +27,9 @@ use crate::record::Record;
 pub trait RecordReader {
     /// Return the next record, or `None` at EOF.
     fn next_record(&mut self) -> Result<Option<Record>>;
+
+    /// The sequence format this reader parses.
+    fn format(&self) -> Format;
 }
 
 /// Detected file format.
@@ -35,6 +38,17 @@ pub enum Format {
     Fastq,
     Fasta,
     Bam,
+}
+
+impl Format {
+    /// Short uppercase name for display (e.g. in the `stats` table).
+    pub fn name(&self) -> &'static str {
+        match self {
+            Format::Fastq => "FASTQ",
+            Format::Fasta => "FASTA",
+            Format::Bam => "BAM",
+        }
+    }
 }
 
 /// Open a file (or stdin if path is "-") and return a boxed `RecordReader`.
@@ -175,6 +189,10 @@ impl RecordReader for FastqReader {
         };
         Ok(Some(Record::with_desc(id, seq, qual, desc)))
     }
+
+    fn format(&self) -> Format {
+        Format::Fastq
+    }
 }
 
 /// FASTA reader built on `noodles::fasta` with pure-Rust gzip support.
@@ -227,6 +245,10 @@ impl RecordReader for FastaReader {
         };
 
         Ok(Some(Record::with_desc(id, seq, None, desc)))
+    }
+
+    fn format(&self) -> Format {
+        Format::Fasta
     }
 }
 
@@ -287,6 +309,10 @@ impl RecordReader for BamReader {
         };
 
         Ok(Some(Record::new(id, seq, qual)))
+    }
+
+    fn format(&self) -> Format {
+        Format::Bam
     }
 }
 

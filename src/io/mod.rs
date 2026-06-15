@@ -6,5 +6,7 @@
 //! details.
 
 pub mod reader;
+pub mod writer;
 
-pub use reader::{open_reader, RecordReader};
+pub use reader::{open_reader, Format, RecordReader};
+pub use writer::{FastaWriter, FastqWriter, RecordWriter};

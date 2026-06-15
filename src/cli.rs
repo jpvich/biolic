@@ -21,10 +21,11 @@ use crate::modules;
     author,
     about = "biolic: Bioinformatics Integrated Operations Library for IO & Computation",
     long_about = "biolic (Bioinformatics Integrated Operations Library for IO & Computation) \
-                  is a modular, fast, memory-efficient toolkit for processing \
-                  sequencing data, with first-class support for long reads (PacBio HiFi \
-                  and Oxford Nanopore) and unaligned BAM input. Streaming-first design \
-                  guarantees constant memory regardless of input file size."
+                  is a fast, memory-efficient, general-purpose toolkit for sequencing data \
+                  (FASTQ, FASTA, and unaligned BAM), built as a platform that grows through \
+                  modules. Streaming-first design guarantees constant memory regardless of \
+                  input size, with particularly strong support for long reads (Oxford \
+                  Nanopore and PacBio HiFi)."
 )]
 pub struct Cli {
     #[command(subcommand)]

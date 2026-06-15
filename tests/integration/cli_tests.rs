@@ -153,26 +153,80 @@ fn stats_extended_fasta_has_length_but_no_quality_percentiles() {
 }
 
 #[test]
-fn stats_multi_file_aggregates() {
-    // small.fastq is 5 reads / 206 bases; passing it twice doubles both.
+fn stats_multi_file_is_per_file_by_default() {
+    // Two distinct files -> a JSON array with one object each (not aggregated).
     Command::cargo_bin("biolic")
         .unwrap()
-        .args(["stats", FASTQ, FASTQ, "--json"])
+        .args(["stats", FASTQ, FASTA, "--json"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"read_count\": 10"))
-        .stdout(predicate::str::contains("\"total_bases\": 412"));
+        .stdout(predicate::str::starts_with("["))
+        .stdout(predicate::str::contains("\"read_count\": 5")) // small.fastq
+        .stdout(predicate::str::contains("\"read_count\": 3")); // small.fasta
 }
 
 #[test]
-fn count_multi_file_aggregates() {
+fn stats_combine_aggregates() {
+    // --combine sums all inputs into one row: FASTQ twice doubles both.
     Command::cargo_bin("biolic")
         .unwrap()
-        .args(["count", FASTQ, FASTQ, "--json"])
+        .args(["stats", FASTQ, FASTQ, "--combine", "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"read_count\": 10"))
+        .stdout(predicate::str::contains("\"total_bases\": 412"))
+        .stdout(predicate::str::contains("\"file\": \"total\""));
+}
+
+#[test]
+fn count_multi_file_is_per_file_by_default() {
+    // Two files -> JSON array with one object each.
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["count", FASTQ, FASTA, "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with("["))
+        .stdout(predicate::str::contains("\"reads\": 5"))
+        .stdout(predicate::str::contains("\"reads\": 3"));
+}
+
+#[test]
+fn count_combine_aggregates() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["count", FASTQ, FASTQ, "--combine", "--json"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"reads\": 10"))
         .stdout(predicate::str::contains("\"bases\": 412"));
+}
+
+#[test]
+fn stats_multi_file_tsv_has_one_row_per_file() {
+    // TSV: a single header line, then one data row per input file.
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["stats", FASTQ, FASTA, "--tsv"])
+        .assert()
+        .success()
+        .stdout(predicate::function(|s: &str| {
+            let lines: Vec<&str> = s.lines().collect();
+            lines.len() == 3 && lines[0].starts_with("file\t")
+        }));
+}
+
+#[test]
+fn stats_basename_strips_directory_in_human_table() {
+    // Human (aligned) output via an explicit non-TTY run still honors --basename;
+    // force human-ish check via TSV file column instead.
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["stats", FASTQ, "--basename", "--tsv"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("small.fastq"))
+        .stdout(predicate::str::contains("tests/data/small.fastq").not());
 }
 
 #[test]
@@ -249,9 +303,219 @@ fn help_works() {
 
 #[test]
 fn unimplemented_module_errors_cleanly() {
+    // `grep` is still a stub; it must fail cleanly rather than panic.
     Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "ACGT", FASTQ])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn sample_count_keeps_exactly_n() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["sample", "-n", "2", "--seed", "1", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert_eq!(text.lines().count(), 8, "2 FASTQ records = 8 lines");
+    assert!(text.starts_with('@'), "FASTQ output starts with '@'");
+}
+
+#[test]
+fn sample_proportion_one_keeps_all() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["sample", "-p", "1.0", FASTQ])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("kept 5 / 5"));
+}
+
+#[test]
+fn sample_proportion_zero_keeps_none() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["sample", "-p", "0.0", FASTQ])
+        .assert()
+        .success()
+        .stdout(predicate::str::is_empty());
+}
+
+#[test]
+fn sample_is_reproducible_with_seed() {
+    let run = || {
+        Command::cargo_bin("biolic")
+            .unwrap()
+            .args(["sample", "-n", "3", "--seed", "42", FASTQ])
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone()
+    };
+    assert_eq!(run(), run(), "same seed must give identical output");
+}
+
+#[test]
+fn sample_bases_requires_a_file_not_stdin() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["sample", "--bases", "100"])
+        .write_stdin(fs::read(FASTQ).unwrap())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("require a file input"));
+}
+
+#[test]
+fn sample_coverage_runs_on_a_file() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["sample", "--coverage", "2", "--genome-size", "100", FASTQ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn convert_fastq_to_fasta_strips_quality() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["convert", FASTQ, "--to", "fasta"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.starts_with('>'), "FASTA output must start with '>'");
+    assert!(!text.contains("\n+\n"), "FASTA must not contain a '+' line");
+    assert_eq!(text.matches('>').count(), 5);
+}
+
+#[test]
+fn convert_bam_to_fastq() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["convert", BAM, "--to", "fastq"])
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with("@"));
+}
+
+#[test]
+fn convert_fasta_to_fastq_requires_fake_quality() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["convert", FASTA, "--to", "fastq"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--fake-quality"));
+}
+
+#[test]
+fn convert_fasta_to_fastq_with_fake_quality() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["convert", FASTA, "--to", "fastq", "--fake-quality", "30"])
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with("@"));
+}
+
+#[test]
+fn convert_gzip_output_roundtrips() {
+    // Write a gzipped FASTQ to the per-test temp dir, then read it back.
+    let out_path = format!("{}/convert_out.fastq.gz", env!("CARGO_TARGET_TMPDIR"));
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["convert", FASTQ, "-o", &out_path])
+        .assert()
+        .success();
+    // The gzip stream must be well-formed: counting it yields the 5 input reads.
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["count", "--json", &out_path])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"reads\": 5"));
+}
+
+#[test]
+fn convert_bz2_output_is_rejected() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["convert", FASTQ, "-o", "out.fastq.bz2"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not supported"));
+}
+
+#[test]
+fn filter_min_length_keeps_subset() {
+    // small.fastq has 5 reads of varying length; only the 100 bp read is >= 50.
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["filter", "-l", "50", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    // Valid FASTQ: 4 lines per record, exactly one record kept.
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 4, "expected exactly one FASTQ record");
+    assert!(lines[0].starts_with('@'));
+    assert_eq!(lines[2], "+");
+    assert_eq!(lines[1].len(), lines[3].len(), "seq and qual length differ");
+}
+
+#[test]
+fn filter_summary_goes_to_stderr() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["filter", "-l", "50", FASTQ])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("kept 1 / 5"));
+}
+
+#[test]
+fn filter_fasta_input_yields_fasta_output() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["filter", "-l", "12", FASTA])
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with(">"));
+}
+
+#[test]
+fn filter_trim_quality_shortens_reads() {
+    // Trimming low-quality ends must reduce total output bytes vs no trimming.
+    let untrimmed = Command::cargo_bin("biolic")
         .unwrap()
         .args(["filter", FASTQ])
         .assert()
-        .failure();
+        .success()
+        .get_output()
+        .stdout
+        .len();
+    let trimmed = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["filter", "--trim-quality", "20", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .len();
+    assert!(
+        trimmed < untrimmed,
+        "trimmed output ({trimmed}) should be smaller than untrimmed ({untrimmed})"
+    );
 }
