@@ -9,7 +9,7 @@
 
 # biolic
 
-**Bioinformatics Integrated Operations Library for IO & Computation** — a modular, streaming bioinformatics toolkit in Rust for processing long-read sequencing data.
+**Bioinformatics Integrated Operations Library for IO & Computation** — a fast, modular, streaming bioinformatics toolkit in Rust for sequencing data (FASTQ/FASTA/BAM), built as a platform that grows through modules, with particularly strong support for long reads (Oxford Nanopore, PacBio HiFi).
 
 [![CI](https://github.com/jpvich/biolic/actions/workflows/ci.yml/badge.svg)](https://github.com/jpvich/biolic/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/biolic.svg)](https://crates.io/crates/biolic)
@@ -21,27 +21,32 @@
 
 ## What is biolic?
 
-biolic unifies the most common operations on sequencing data — statistics, filtering,
-conversion, sampling, search, and quality control — into a single fast, memory-efficient
-binary with first-class support for PacBio HiFi and Oxford Nanopore long reads.
+biolic is a **general-purpose** bioinformatics toolkit: it unifies the most common
+operations on sequencing data — statistics, filtering, conversion, sampling, search,
+and quality control — into a single fast, memory-efficient binary. It works on FASTQ,
+FASTA, and unaligned BAM (DNA, RNA, or protein), and is built as a **platform that grows
+through modules**, so new capability is added without bloating the core. Its support for
+long reads (Oxford Nanopore, PacBio HiFi) is particularly strong.
 
-Today, a bioinformatician working with long-read data must combine `samtools`, `nanoq`,
-`chopper`, `seqtk`, `rasusa`, and `seqkit` — each with different CLIs, install methods,
-and quirks. biolic replaces all of them with one binary, one consistent CLI, and
-streaming-first performance.
+Today, a bioinformatician juggles `samtools`, `nanoq`, `chopper`, `seqtk`, `rasusa`,
+`seqkit`, and more — each with a different CLI, install method, and quirks. biolic
+replaces them with one binary, one consistent CLI, and streaming-first performance.
 
 ## Status
 
 **Phase 1, in active development (v0.1.1).** Working today:
-- `biolic stats` — N50/N90, mean/median length, quality, GC, and length + quality percentiles (`--extended`); multi-file aggregation
-- `biolic count` — fast read and base counting
+- `biolic stats` — N50/N90, mean/median length, quality, GC, and length + quality percentiles (`--extended`); one row per file by default, `--combine` to aggregate
+- `biolic count` — fast read and base counting; per-file or `--combine`
+- `biolic filter` — keep/drop reads by length, mean quality, GC, and N content, with fixed crops (`--headcrop`/`--tailcrop`) and quality trimming (`--trim-quality`)
+- `biolic convert` — BAM→FASTQ/FASTA, FASTQ↔FASTA, and gzip (de)compression (format inferred from the `-o` extension, or `--to` for stdout)
+- `biolic sample` — subsample by count (`-n`), proportion (`-p`), total bases (`--bases`), or target coverage (`--coverage`/`--genome-size`); reproducible with `--seed`
 - **Input**: FASTQ, FASTA, and unaligned BAM — plain or gzipped, from files or stdin (format auto-detected)
-- **Output**: human-readable, `--json`, or `--tsv`
+- **Output**: aligned columnar table (human), `--json`, or `--tsv` (one row per file)
 - **Interactive REPL**: run `biolic` with no arguments for a `biolic>` prompt with tab-completion
 - **Shell completions**: `biolic completions <bash|zsh|fish>`
 
 Coming next:
-- `biolic filter`, `biolic convert`, `biolic sample`, `biolic grep`, `biolic head`, `biolic tail`
+- `biolic grep`, `biolic head`, `biolic tail`
 - `biolic qc` — adaptive, interpretive QC (mixture models, anomaly detection, threshold recommendations)
 - `biolic logs` — queryable execution history
 
@@ -80,8 +85,17 @@ biolic stats reads.fastq.gz --json
 # Fast counting
 biolic count reads.fastq.gz
 
+# Filter by length and quality, trimming low-quality ends
+biolic filter -q 10 -l 500 --trim-quality 12 reads.fastq.gz > clean.fastq
+
+# Convert BAM to gzipped FASTQ (format inferred from the extension)
+biolic convert reads.bam -o reads.fastq.gz
+
+# Subsample to ~30x coverage of a 5 Mbp genome, reproducibly
+biolic sample --coverage 30 --genome-size 5M --seed 42 reads.fastq.gz > sub.fastq
+
 # Pipe through tools
-cat reads.fastq | biolic stats
+cat reads.fastq | biolic filter -q 10 | biolic stats
 ```
 
 Example output:
@@ -107,9 +121,11 @@ GC content:        42.18%
 
 1. **Streaming first**: constant memory regardless of file size.
 2. **Single binary**: zero runtime dependencies, no Python, no Docker.
-3. **Long-read native**: N50, native BAM input, per-position analysis.
+3. **Format-general, long-read strong**: works on FASTQ/FASTA/BAM (DNA, RNA, or
+   protein); especially capable on long reads (N50/N90, native BAM, per-position analysis).
 4. **Modern UX**: JSON output, automatic format detection, predictable CLI.
-5. **Modular**: each operation is an independent module, easy to add new ones.
+5. **A platform that grows**: each operation is an independent module against a
+   stable core, so new capability is added without touching the engine.
 
 ## Supported formats
 
@@ -140,12 +156,22 @@ queryable execution history, with Python bindings and Bioconda packaging to foll
 
 ## Contributing
 
-Contributions are welcome. Please open an issue before submitting major changes.
+Contributions are welcome — biolic is built to grow through **modules**. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the design and the Module Contract (how to
+add a command). Please open an issue before major changes; there are templates
+for bugs, features, and new-module proposals.
 
 The project uses standard Rust tooling:
 - `cargo fmt` before commits
 - `cargo clippy` must pass
 - `cargo test` must pass
+
+## Security
+
+biolic parses files that may come from untrusted sources. To report a
+vulnerability, see [SECURITY.md](SECURITY.md) — please use private reporting
+rather than a public issue.
 
 ## License
 

@@ -5,12 +5,12 @@ edition = "2021"
 rust-version = "1.85"
 authors = ["jpvich"]
 license = "MIT OR Apache-2.0"
-description = "biolic (Bioinformatics Integrated Operations Library for IO & Computation): a modular, streaming bioinformatics toolkit in Rust for long-read sequencing data"
+description = "biolic (Bioinformatics Integrated Operations Library for IO & Computation): a fast, modular, streaming bioinformatics toolkit in Rust for sequencing data (FASTQ/FASTA/BAM), with strong long-read support"
 repository = "https://github.com/jpvich/biolic"
 homepage = "https://github.com/jpvich/biolic"
 documentation = "https://docs.rs/biolic"
 readme = "README.md"
-keywords = ["bioinformatics", "fastq", "bam", "long-reads", "genomics"]
+keywords = ["bioinformatics", "genomics", "fastq", "bam", "long-reads"]
 categories = ["command-line-utilities", "science"]
 # Keep internal planning docs out of the public crate.
 # (crates.io packages are public and permanent.)
