@@ -54,6 +54,12 @@ rayon = "1.10"
 # Random sampling
 rand = "0.10"
 
+# Pattern search (grep): multi-pattern exact matching + regular expressions.
+# Both are already in the dependency tree (via noodles/clap), so these add no
+# meaningful build cost.
+aho-corasick = "1"
+regex = "1"
+
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

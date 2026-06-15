@@ -303,10 +303,10 @@ fn help_works() {
 
 #[test]
 fn unimplemented_module_errors_cleanly() {
-    // `grep` is still a stub; it must fail cleanly rather than panic.
+    // `qc` is still a stub; it must fail cleanly rather than panic.
     Command::cargo_bin("biolic")
         .unwrap()
-        .args(["grep", "ACGT", FASTQ])
+        .args(["qc", FASTQ])
         .assert()
         .failure();
 }
@@ -632,4 +632,112 @@ fn tail_reads_from_stdin() {
         .assert()
         .success()
         .stdout(predicate::str::contains("@read5"));
+}
+
+fn grep_lines(args: &[&str]) -> usize {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(args)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    String::from_utf8(out).unwrap().lines().count()
+}
+
+#[test]
+fn grep_matches_sequence() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "-p", "GGGGCCCC", FASTQ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@read2"));
+}
+
+#[test]
+fn grep_no_match_is_empty_and_succeeds() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "-p", "ZZZZ", FASTQ])
+        .assert()
+        .success()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("kept 0 / 5"));
+}
+
+#[test]
+fn grep_invert_drops_matches() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "-v", "-p", "GGGGCCCC", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        !text.contains("@read2"),
+        "inverted output must drop the match"
+    );
+    assert!(text.contains("@read1"), "non-matching reads are kept");
+}
+
+#[test]
+fn grep_in_name_searches_id() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "-n", "-p", "read1", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert_eq!(text.lines().count(), 4, "one FASTQ record");
+    assert!(text.contains("@read1"));
+    assert!(!text.contains("@read2"));
+}
+
+#[test]
+fn grep_degenerate_iupac_matches() {
+    // read2 contains GGGGCCCC; GGNNCCCC with IUPAC N matches it.
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "-d", "-p", "GGNNCCCC", FASTQ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@read2"));
+}
+
+#[test]
+fn grep_both_strands_adds_reverse_complement_hits() {
+    // read4 is all A's: "TTTT" is absent on the forward strand but present on
+    // its reverse complement, so --both-strands must keep strictly more reads.
+    let forward = grep_lines(&["grep", "-p", "TTTT", FASTQ]);
+    let both = grep_lines(&["grep", "-p", "TTTT", "--both-strands", FASTQ]);
+    assert!(
+        both > forward,
+        "both-strands ({both} lines) should exceed forward-only ({forward} lines)"
+    );
+}
+
+#[test]
+fn grep_regex_and_mismatches_conflict() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", "--regex", "--mismatches", "1", "-p", "AAAA", FASTQ])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn grep_requires_a_pattern_source() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["grep", FASTQ])
+        .assert()
+        .failure();
 }

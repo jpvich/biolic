@@ -125,6 +125,7 @@ dependencies = [
 name = "biolic"
 version = "0.1.1"
 dependencies = [
+ "aho-corasick",
  "anyhow",
  "assert_cmd",
  "clap",
@@ -138,6 +139,7 @@ dependencies = [
  "rand",
  "rayon",
  "reedline",
+ "regex",
  "serde",
  "serde_json",
  "shlex",
