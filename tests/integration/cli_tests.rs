@@ -519,3 +519,117 @@ fn filter_trim_quality_shortens_reads() {
         "trimmed output ({trimmed}) should be smaller than untrimmed ({untrimmed})"
     );
 }
+
+#[test]
+fn head_takes_first_n_reads() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["head", "-n", "2", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert_eq!(text.lines().count(), 8, "2 FASTQ records = 8 lines");
+    assert!(text.contains("@read1"));
+    assert!(text.contains("@read2"));
+    assert!(!text.contains("@read3"), "must stop after the first 2");
+}
+
+#[test]
+fn head_default_is_ten_reads() {
+    // small.fastq has only 5 reads; the default of 10 yields all of them.
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["head", FASTQ])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("wrote 5 records"));
+}
+
+#[test]
+fn head_bases_stops_early_whole_records() {
+    // Each read in small.fastq is short; --bases 1 reaches the target after the
+    // first whole record and stops.
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["head", "--bases", "1", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("@read1"));
+    assert!(
+        !text.contains("@read2"),
+        "one whole record satisfies --bases 1"
+    );
+}
+
+#[test]
+fn head_preserves_fasta_format() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["head", "-n", "2", FASTA])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.starts_with('>'), "FASTA output starts with '>'");
+    assert!(!text.contains('+'), "no FASTQ separator in FASTA output");
+    assert!(text.contains(">seq1"));
+    assert!(text.contains(">seq2"));
+    assert!(!text.contains(">seq3"));
+}
+
+#[test]
+fn head_reads_and_bases_conflict() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["head", "-n", "2", "--bases", "100", FASTQ])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn tail_takes_last_n_reads() {
+    let out = Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["tail", "-n", "2", FASTQ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(out).unwrap();
+    assert_eq!(text.lines().count(), 8, "2 FASTQ records = 8 lines");
+    assert!(text.contains("@read4"));
+    assert!(text.contains("@read5"));
+    assert!(!text.contains("@read3"), "only the last 2");
+}
+
+#[test]
+fn tail_more_than_available_keeps_all() {
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["tail", "-n", "100", FASTQ])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("wrote 5 records"));
+}
+
+#[test]
+fn tail_reads_from_stdin() {
+    let data = fs::read(FASTQ).unwrap();
+    Command::cargo_bin("biolic")
+        .unwrap()
+        .args(["tail", "-n", "1"])
+        .write_stdin(data)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@read5"));
+}

@@ -40,13 +40,14 @@ replaces them with one binary, one consistent CLI, and streaming-first performan
 - `biolic filter` — keep/drop reads by length, mean quality, GC, and N content, with fixed crops (`--headcrop`/`--tailcrop`) and quality trimming (`--trim-quality`)
 - `biolic convert` — BAM→FASTQ/FASTA, FASTQ↔FASTA, and gzip (de)compression (format inferred from the `-o` extension, or `--to` for stdout)
 - `biolic sample` — subsample by count (`-n`), proportion (`-p`), total bases (`--bases`), or target coverage (`--coverage`/`--genome-size`); reproducible with `--seed`
+- `biolic head` / `biolic tail` — first/last N reads (`-n`) or bases (`--bases`); `head` stops reading early, `tail` buffers only a bounded suffix
 - **Input**: FASTQ, FASTA, and unaligned BAM — plain or gzipped, from files or stdin (format auto-detected)
 - **Output**: aligned columnar table (human), `--json`, or `--tsv` (one row per file)
 - **Interactive REPL**: run `biolic` with no arguments for a `biolic>` prompt with tab-completion
 - **Shell completions**: `biolic completions <bash|zsh|fish>`
 
 Coming next:
-- `biolic grep`, `biolic head`, `biolic tail`
+- `biolic grep` — pattern search across read names and sequences
 - `biolic qc` — adaptive, interpretive QC (mixture models, anomaly detection, threshold recommendations)
 - `biolic logs` — queryable execution history
 
@@ -93,6 +94,10 @@ biolic convert reads.bam -o reads.fastq.gz
 
 # Subsample to ~30x coverage of a 5 Mbp genome, reproducibly
 biolic sample --coverage 30 --genome-size 5M --seed 42 reads.fastq.gz > sub.fastq
+
+# Peek at the first 100 reads, or the last 1 Mbp
+biolic head -n 100 reads.fastq.gz
+biolic tail --bases 1M reads.fastq.gz
 
 # Pipe through tools
 cat reads.fastq | biolic filter -q 10 | biolic stats
