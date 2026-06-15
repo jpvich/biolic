@@ -15,8 +15,6 @@ use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
 use flate2::read::MultiGzDecoder;
-// Brings the `iter`/`len`/`is_empty` methods on BAM quality scores into scope.
-use noodles::sam::alignment::record::QualityScores as _;
 
 use crate::record::Record;
 
@@ -221,7 +219,7 @@ impl FastaReader {
 
 impl RecordReader for FastaReader {
     fn next_record(&mut self) -> Result<Option<Record>> {
-        let mut definition = String::new();
+        let mut definition = noodles::fasta::record::Definition::default();
         let n = self
             .inner
             .read_definition(&mut definition)
@@ -235,14 +233,9 @@ impl RecordReader for FastaReader {
             .read_sequence(&mut seq)
             .map_err(|e| anyhow!("FASTA parse error: {}", e))?;
 
-        // The definition line is ">name [optional description]". Tolerate a
-        // present-or-absent leading '>' and an optional description.
-        let body = definition.trim_end();
-        let body = body.strip_prefix('>').unwrap_or(body);
-        let (id, desc) = match body.split_once(char::is_whitespace) {
-            Some((name, rest)) => (name.as_bytes().to_vec(), Some(rest.as_bytes().to_vec())),
-            None => (body.as_bytes().to_vec(), None),
-        };
+        // noodles parses ">name [optional description]" into name + description.
+        let id = definition.name().to_vec();
+        let desc = definition.description().map(|d| d.to_vec());
 
         Ok(Some(Record::with_desc(id, seq, None, desc)))
     }
@@ -259,7 +252,7 @@ impl RecordReader for FastaReader {
 /// is consumed on open. BAM stores quality as numeric Phred; biolic uses Phred+33
 /// ASCII everywhere, so scores are shifted by 33 on read.
 pub struct BamReader {
-    inner: noodles::bam::io::Reader<noodles::bgzf::Reader<Box<dyn Read>>>,
+    inner: noodles::bam::io::Reader<noodles::bgzf::io::Reader<Box<dyn Read>>>,
 }
 
 impl BamReader {
@@ -301,7 +294,6 @@ impl RecordReader for BamReader {
         } else {
             let mut v = Vec::with_capacity(scores.len());
             for q in scores.iter() {
-                let q = q.map_err(|e| anyhow!("BAM quality error: {}", e))?;
                 // BAM stores numeric Phred; biolic uses Phred+33 ASCII.
                 v.push(q.saturating_add(33));
             }

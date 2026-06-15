@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Args;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 use crate::cli::RunContext;
 use crate::io::reader::open_input;
@@ -166,7 +166,7 @@ impl Reservoir {
         if self.items.len() < self.capacity {
             self.items.push(rec);
         } else if self.capacity > 0 {
-            let j = rng.gen_range(0..=self.seen);
+            let j = rng.random_range(0..=self.seen);
             if (j as usize) < self.capacity {
                 self.items[j as usize] = rec;
             }
@@ -187,7 +187,7 @@ impl Reservoir {
 
 /// Bernoulli pass: emit each read with probability `p`. Returns the kept count
 /// and writes the total seen into `total`. The selection itself is a single
-/// `rng.gen_bool(p)`; this thin loop is the I/O wiring used by `run`.
+/// `rng.random_bool(p)`; this thin loop is the I/O wiring used by `run`.
 fn bernoulli_stream(
     reader: &mut dyn RecordReader,
     writer: &mut dyn RecordWriter,
@@ -198,7 +198,7 @@ fn bernoulli_stream(
     let mut kept = 0u64;
     while let Some(rec) = reader.next_record().context("reading record")? {
         *total += 1;
-        if rng.gen_bool(p) {
+        if rng.random_bool(p) {
             writer.write_record(&rec)?;
             kept += 1;
         }
@@ -221,7 +221,7 @@ fn total_bases(input: &Path) -> Result<u64> {
 fn make_rng(seed: Option<u64>) -> StdRng {
     match seed {
         Some(s) => StdRng::seed_from_u64(s),
-        None => StdRng::from_entropy(),
+        None => StdRng::from_rng(&mut rand::rng()),
     }
 }
 
