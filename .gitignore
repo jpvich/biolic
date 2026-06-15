@@ -28,3 +28,7 @@ perf.data*
 
 # Note: Cargo.lock is intentionally NOT ignored — biolic ships a binary, so the
 # lockfile is committed for reproducible builds.
+
+# Local scratch area for cloned third-party tools used only as study/reference.
+# Never tracked: they are separate projects with their own git history & licenses.
+references/
