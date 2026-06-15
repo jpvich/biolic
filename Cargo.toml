@@ -58,7 +58,9 @@ rand = "0.10"
 # Both are already in the dependency tree (via noodles/clap), so these add no
 # meaningful build cost.
 aho-corasick = "1"
-regex = "1"
+# Floor at 1.12 (well above the 1.5.5 fix for RUSTSEC-2022-0013) so the version
+# range cannot resolve a vulnerable regex; the lock already uses 1.12.x.
+regex = "1.12"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
