@@ -61,12 +61,12 @@ jobs:
         run: cargo test --verbose --target ${{ matrix.target }}
 
   msrv:
-    name: MSRV (1.85)
+    name: MSRV (1.89)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@1.85
+      - uses: dtolnay/rust-toolchain@1.89
       - uses: Swatinem/rust-cache@v2
       - name: Build on MSRV
         run: cargo build --verbose

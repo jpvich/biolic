@@ -2,7 +2,7 @@
 name = "biolic"
 version = "0.1.1"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.89"
 authors = ["jpvich"]
 license = "MIT OR Apache-2.0"
 description = "biolic (Bioinformatics Integrated Operations Library for IO & Computation): a fast, modular, streaming bioinformatics toolkit in Rust for sequencing data (FASTQ/FASTA/BAM), with strong long-read support"
